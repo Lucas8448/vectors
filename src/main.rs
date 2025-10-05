@@ -109,7 +109,7 @@ fn resolve_collision(a: &mut Particle, b: &mut Particle) {
         return;
     }
 
-    let restitution = 1.0;
+    let restitution = RESTITUTION;
     let j = -(1.0 + restitution) * vel_along_normal / 2.0;
 
     let impulse = n.scale(j);
