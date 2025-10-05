@@ -1,29 +1,29 @@
-use std::{thread, time::Duration};
+use macroquad::prelude::*;
 
 #[derive(Clone, Copy, Debug)]
-struct Vec2 {
+struct Vec2f {
     x: f64,
     y: f64,
 }
 
-impl Vec2 {
+impl Vec2f {
     fn new(x: f64, y: f64) -> Self {
         Self { x, y }
     }
 
-    fn add(self, other: Vec2) -> Vec2 {
-        Vec2::new(self.x + other.x, self.y + other.y)
+    fn add(self, other: Vec2f) -> Vec2f {
+        Vec2f::new(self.x + other.x, self.y + other.y)
     }
 
-    fn sub(self, other: Vec2) -> Vec2 {
-        Vec2::new(self.x - other.x, self.y - other.y)
+    fn sub(self, other: Vec2f) -> Vec2f {
+        Vec2f::new(self.x - other.x, self.y - other.y)
     }
 
-    fn scale(self, s: f64) -> Vec2 {
-        Vec2::new(self.x * s, self.y * s)
+    fn scale(self, s: f64) -> Vec2f {
+        Vec2f::new(self.x * s, self.y * s)
     }
 
-    fn dot(self, other: Vec2) -> f64 {
+    fn dot(self, other: Vec2f) -> f64 {
         self.x * other.x + self.y * other.y
     }
 
@@ -31,36 +31,57 @@ impl Vec2 {
         (self.x * self.x + self.y * self.y).sqrt()
     }
 
-    fn normalize(self) -> Vec2 {
+    fn normalize(self) -> Vec2f {
         let m = self.magnitude();
         if m == 0.0 { self } else { self.scale(1.0 / m) }
     }
 }
 
 struct Particle {
-    pos: Vec2,
-    vel: Vec2,
+    pos: Vec2f,
+    vel: Vec2f,
     radius: f64,
+    color: Color,
 }
 
 impl Particle {
-    fn new(x: f64, y: f64, vx: f64, vy: f64, radius: f64) -> Self {
+    fn new(x: f64, y: f64, vx: f64, vy: f64, radius: f64, color: Color) -> Self {
         Self {
-            pos: Vec2::new(x, y),
-            vel: Vec2::new(vx, vy),
+            pos: Vec2f::new(x, y),
+            vel: Vec2f::new(vx, vy),
             radius,
+            color,
         }
     }
 
     fn update(&mut self, dt: f64, bounds: (f64, f64)) {
         self.pos = self.pos.add(self.vel.scale(dt));
 
-        if self.pos.x - self.radius <= 0.0 || self.pos.x + self.radius >= bounds.0 {
+        if self.pos.x - self.radius < 0.0 {
+            self.pos.x = self.radius;
             self.vel.x = -self.vel.x;
         }
-        if self.pos.y - self.radius <= 0.0 || self.pos.y + self.radius >= bounds.1 {
+        if self.pos.x + self.radius > bounds.0 as f64 {
+            self.pos.x = bounds.0 as f64 - self.radius;
+            self.vel.x = -self.vel.x;
+        }
+        if self.pos.y - self.radius < 0.0 {
+            self.pos.y = self.radius;
             self.vel.y = -self.vel.y;
         }
+        if self.pos.y + self.radius > bounds.1 as f64 {
+            self.pos.y = bounds.1 as f64 - self.radius;
+            self.vel.y = -self.vel.y;
+        }
+    }
+
+    fn draw(&self) {
+        draw_circle(
+            self.pos.x as f32,
+            self.pos.y as f32,
+            self.radius as f32,
+            self.color,
+        );
     }
 }
 
@@ -74,9 +95,7 @@ fn resolve_collision(a: &mut Particle, b: &mut Particle) {
     }
 
     let n = normal.normalize();
-
     let rv = a.vel.sub(b.vel);
-
     let vel_along_normal = rv.dot(n);
 
     if vel_along_normal > 0.0 {
@@ -84,7 +103,6 @@ fn resolve_collision(a: &mut Particle, b: &mut Particle) {
     }
 
     let restitution = 1.0;
-
     let j = -(1.0 + restitution) * vel_along_normal / 2.0;
 
     let impulse = n.scale(j);
@@ -97,19 +115,26 @@ fn resolve_collision(a: &mut Particle, b: &mut Particle) {
     b.pos = b.pos.sub(correction);
 }
 
-fn main() {
-    let bounds = (80.0, 24.0);
+#[macroquad::main("Particle Simulation")]
+async fn main() {
+    let screen_w = 800.0;
+    let screen_h = 600.0;
     let mut particles = vec![
-        Particle::new(10.0, 5.0, 6.0, 2.0, 1.0),
-        Particle::new(30.0, 10.0, -3.0, 1.0, 1.0),
-        Particle::new(60.0, 15.0, -5.0, -2.0, 1.0),
-        Particle::new(40.0, 8.0, 2.0, -4.0, 1.0),
-        Particle::new(20.0, 16.0, 0.0, 5.0, 1.0),
+        Particle::new(100.0, 100.0, 200.0, 80.0, 10.0, RED),
+        Particle::new(400.0, 300.0, -150.0, 60.0, 10.0, BLUE),
+        Particle::new(600.0, 200.0, -200.0, -100.0, 10.0, GREEN),
+        Particle::new(200.0, 400.0, 120.0, -150.0, 10.0, YELLOW),
+        Particle::new(300.0, 500.0, 100.0, -120.0, 10.0, ORANGE),
+        Particle::new(700.0, 100.0, -180.0, 90.0, 10.0, PURPLE),
+        Particle::new(500.0, 400.0, 160.0, -70.0, 10.0, PINK),
+        Particle::new(350.0, 150.0, 140.0, 130.0, 10.0, MAGENTA),
+        Particle::new(450.0, 350.0, -160.0, -90.0, 10.0, LIGHTGRAY),
     ];
 
-    let dt = 0.1;
-
     loop {
+        let dt = get_frame_time() as f64;
+        let bounds = (screen_w, screen_h);
+
         for p in particles.iter_mut() {
             p.update(dt, bounds);
         }
@@ -122,19 +147,11 @@ fn main() {
             }
         }
 
-        print!("\x1B[2J\x1B[1;1H");
-        let mut grid = vec![vec![' '; bounds.0 as usize]; bounds.1 as usize];
+        clear_background(BLACK);
         for p in &particles {
-            let x = p.pos.x as usize;
-            let y = p.pos.y as usize;
-            if y < grid.len() && x < grid[0].len() {
-                grid[y][x] = '*';
-            }
-        }
-        for row in grid {
-            println!("{}", row.into_iter().collect::<String>());
+            p.draw();
         }
 
-        thread::sleep(Duration::from_millis(50));
+        next_frame().await;
     }
 }
