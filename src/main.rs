@@ -1,6 +1,7 @@
 use macroquad::prelude::*;
 
 const GRAVITY: f64 = 500.0;
+const RESTITUTION: f64 = 0.8;
 
 #[derive(Clone, Copy, Debug)]
 struct Vec2f {
@@ -64,18 +65,20 @@ impl Particle {
         if self.pos.x - self.radius < 0.0 {
             self.pos.x = self.radius;
             self.vel.x = -self.vel.x;
+            self.vel.x = -self.vel.x * RESTITUTION;
         }
         if self.pos.x + self.radius > bounds.0 as f64 {
             self.pos.x = bounds.0 as f64 - self.radius;
             self.vel.x = -self.vel.x;
+            self.vel.x = -self.vel.x * RESTITUTION;
         }
         if self.pos.y - self.radius < 0.0 {
             self.pos.y = self.radius;
-            self.vel.y = -self.vel.y;
+            self.vel.y = -self.vel.y * RESTITUTION;
         }
         if self.pos.y + self.radius > bounds.1 as f64 {
             self.pos.y = bounds.1 as f64 - self.radius;
-            self.vel.y = -self.vel.y;
+            self.vel.y = -self.vel.y * RESTITUTION;
         }
     }
 
