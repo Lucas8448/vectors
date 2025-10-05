@@ -1,5 +1,7 @@
 use macroquad::prelude::*;
 
+const GRAVITY: f64 = 500.0;
+
 #[derive(Clone, Copy, Debug)]
 struct Vec2f {
     x: f64,
@@ -55,6 +57,8 @@ impl Particle {
     }
 
     fn update(&mut self, dt: f64, bounds: (f64, f64)) {
+        self.vel.y += GRAVITY * dt;
+
         self.pos = self.pos.add(self.vel.scale(dt));
 
         if self.pos.x - self.radius < 0.0 {
